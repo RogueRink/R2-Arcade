@@ -15,7 +15,7 @@ var Breakout = new Phaser.Class({
 
     preload: function ()
     {
-        this.load.atlas('assets', 'assets/games/breakout/breakout.png', 'assets/games/breakout/breakout.json');
+        this.load.atlas('assets', 'breakout.png', 'breakout.json');
     },
 
     create: function ()
