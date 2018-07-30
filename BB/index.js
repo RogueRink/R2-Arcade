@@ -1,40 +1,139 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Phaser 3</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="shortcut icon" href="./images/favicon.ico" type="image/x-icon" />
-    <link rel="stylesheet" type="text/css" href="css/labs.css" />
-    <script src="./js/getQueryString.js"></script>
-    <script src="./js/jquery-3.1.1.min.js"></script>
-    <script src="./js/datgui.js"></script>        
-    <script src="./js/TweenMax.min.js"></script> 
-    <script src="./js/labs.js"></script> 
-</head>
-<body>
+var Breakout = new Phaser.Class({
 
-    <div id="phaser-example"></div>
+    Extends: Phaser.Scene,
 
-    <p id="loading">Please wait, loading Phaser build ...</p>
+    initialize:
 
-    <div id="nav">
+    function Breakout ()
+    {
+        Phaser.Scene.call(this, { key: 'breakout' });
 
-        <a id="backlink">Back</a>
-        <a id="editlink">Edit</a>
-        <a href="https://github.com/photonstorm/phaser3-examples/issues">Open Issue</a>
-        <a id="iframelink">iFrame</a>
-        <a id="csslink">100%</a>
-        <a id="fblink">FB</a>
+        this.bricks;
+        this.paddle;
+        this.ball;
+    },
 
-    </div>
+    preload: function ()
+    {
+        this.load.atlas('assets', 'assets/games/breakout/breakout.png', 'assets/games/breakout/breakout.json');
+    },
 
-    <p id="feedback">
-        Phaser 3 is still only a few months old and there are Examples which may not work.
-        If this is one of them, then we're really sorry! Help us by clicking the 'Open Issue' button, pasting the URL
-        of the example, and we'll fix it (or remove it) as soon as we can.<br /><br />
-        Don't forget the <strong><a href="https://photonstorm.github.io/phaser3-docs/">API Docs</a></strong>. You can view a <a href="https://photonstorm.github.io/phaser3-docs/classes.list.html">list of all Classes</a> or the <a href="https://photonstorm.github.io/phaser3-docs/namespaces.list.html">Namespaces list</a>.
-    </p>
+    create: function ()
+    {
+        //  Enable world bounds, but disable the floor
+        this.physics.world.setBoundsCollision(true, true, true, false);
 
-</body>
-</html>
+        //  Create the bricks in a 10x6 grid
+        this.bricks = this.physics.add.staticGroup({
+            key: 'assets', frame: [ 'blue1', 'red1', 'green1', 'yellow1', 'silver1', 'purple1' ],
+            frameQuantity: 10,
+            gridAlign: { width: 10, height: 6, cellWidth: 64, cellHeight: 32, x: 112, y: 100 }
+        });
+
+        this.ball = this.physics.add.image(400, 500, 'assets', 'ball1').setCollideWorldBounds(true).setBounce(1);
+        this.ball.setData('onPaddle', true);
+
+        this.paddle = this.physics.add.image(400, 550, 'assets', 'paddle1').setImmovable();
+
+        //  Our colliders
+        this.physics.add.collider(this.ball, this.bricks, this.hitBrick, null, this);
+        this.physics.add.collider(this.ball, this.paddle, this.hitPaddle, null, this);
+
+        //  Input events
+        this.input.on('pointermove', function (pointer) {
+
+            //  Keep the paddle within the game
+            this.paddle.x = Phaser.Math.Clamp(pointer.x, 52, 748);
+
+            if (this.ball.getData('onPaddle'))
+            {
+                this.ball.x = this.paddle.x;
+            }
+
+        }, this);
+
+        this.input.on('pointerup', function (pointer) {
+
+            if (this.ball.getData('onPaddle'))
+            {
+                this.ball.setVelocity(-75, -300);
+                this.ball.setData('onPaddle', false);
+            }
+
+        }, this);
+    },
+
+    hitBrick: function (ball, brick)
+    {
+        brick.disableBody(true, true);
+
+        if (this.bricks.countActive() === 0)
+        {
+            this.resetLevel();
+        }
+    },
+
+    resetBall: function ()
+    {
+        this.ball.setVelocity(0);
+        this.ball.setPosition(this.paddle.x, 500);
+        this.ball.setData('onPaddle', true);
+    },
+
+    resetLevel: function ()
+    {
+        this.resetBall();
+
+        this.bricks.children.each(function (brick) {
+
+            brick.enableBody(false, 0, 0, true, true);
+
+        });
+    },
+
+    hitPaddle: function (ball, paddle)
+    {
+        var diff = 0;
+
+        if (ball.x < paddle.x)
+        {
+            //  Ball is on the left-hand side of the paddle
+            diff = paddle.x - ball.x;
+            ball.setVelocityX(-10 * diff);
+        }
+        else if (ball.x > paddle.x)
+        {
+            //  Ball is on the right-hand side of the paddle
+            diff = ball.x -paddle.x;
+            ball.setVelocityX(10 * diff);
+        }
+        else
+        {
+            //  Ball is perfectly in the middle
+            //  Add a little random X to stop it bouncing straight up!
+            ball.setVelocityX(2 + Math.random() * 8);
+        }
+    },
+
+    update: function ()
+    {
+        if (this.ball.y > 600)
+        {
+            this.resetBall();
+        }
+    }
+
+});
+
+var config = {
+    type: Phaser.WEBGL,
+    width: 800,
+    height: 600,
+    parent: 'phaser-example',
+    scene: [ Breakout ],
+    physics: {
+        default: 'arcade'
+    }
+};
+
+var game = new Phaser.Game(config);
